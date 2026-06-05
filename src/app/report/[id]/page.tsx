@@ -12,5 +12,11 @@ export default async function ReportPage({ params }: PageProps) {
 
   if (!report) notFound();
 
-  return <VisionEchoApp initialCategories={db.categories} initialReporters={db.reporters} initialReports={[report]} />;
+  return (
+    <VisionEchoApp
+      initialCategories={db.categories}
+      initialReporters={db.reporters}
+      initialReports={[report]}
+    />
+  );
 }

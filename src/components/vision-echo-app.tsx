@@ -31,7 +31,18 @@ import {
   Users,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import type { Category, KycSubmission, MediaType, PublicUser, Report, ReporterProfile, ReportStatus, RoleApplication, UserRole, UserStatus } from "@/lib/types";
+import type {
+  Category,
+  KycSubmission,
+  MediaType,
+  PublicUser,
+  Report,
+  ReporterProfile,
+  ReportStatus,
+  RoleApplication,
+  UserRole,
+  UserStatus,
+} from "@/lib/types";
 
 type AppProps = {
   initialCategories: Category[];
@@ -63,30 +74,45 @@ const statusLabels: Record<ReportStatus, string> = {
 };
 
 function formatTime(value: string) {
-  const diff = Math.max(1, Math.round((Date.now() - new Date(value).getTime()) / 60000));
+  const diff = Math.max(
+    1,
+    Math.round((Date.now() - new Date(value).getTime()) / 60000),
+  );
   if (diff < 60) return `${diff} min ago`;
   const hours = Math.round(diff / 60);
   if (hours < 24) return `${hours} hr ago`;
   return `${Math.round(hours / 24)} day ago`;
 }
 
-export function VisionEchoApp({ initialCategories, initialReporters, initialReports, initialCategory = "all" }: AppProps) {
+export function VisionEchoApp({
+  initialCategories,
+  initialReporters,
+  initialReports,
+  initialCategory = "all",
+}: AppProps) {
   const [reports, setReports] = useState(initialReports);
   const [categories] = useState(initialCategories);
   const [reporters, setReporters] = useState(initialReporters);
   const [currentUser, setCurrentUser] = useState<PublicUser | null>(null);
   const [users, setUsers] = useState<PublicUser[]>([]);
   const [kycSubmissions, setKycSubmissions] = useState<KycSubmission[]>([]);
-  const [roleApplications, setRoleApplications] = useState<RoleApplication[]>([]);
+  const [roleApplications, setRoleApplications] = useState<RoleApplication[]>(
+    [],
+  );
   const [myKyc, setMyKyc] = useState<KycSubmission | null>(null);
-  const [myRoleApplication, setMyRoleApplication] = useState<RoleApplication | null>(null);
+  const [myRoleApplication, setMyRoleApplication] =
+    useState<RoleApplication | null>(null);
   const [firstAdminId, setFirstAdminId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [activeStatus, setActiveStatus] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
   const [dark, setDark] = useState(false);
   const [toast, setToast] = useState("");
-  const [mediaPreview, setMediaPreview] = useState<{ type: MediaType; url: string; name?: string } | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<{
+    type: MediaType;
+    url: string;
+    name?: string;
+  } | null>(null);
   const [liveOpen, setLiveOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -97,8 +123,14 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
   const visibleReports = useMemo(() => {
     const q = search.trim().toLowerCase();
     return reports
-      .filter((report) => report.status !== "rejected" && report.status !== "archived")
-      .filter((report) => activeCategory === "all" || report.categorySlug === activeCategory)
+      .filter(
+        (report) =>
+          report.status !== "rejected" && report.status !== "archived",
+      )
+      .filter(
+        (report) =>
+          activeCategory === "all" || report.categorySlug === activeCategory,
+      )
       .filter((report) => {
         if (activeStatus === "all") return true;
         if (activeStatus === "live") return report.live;
@@ -106,27 +138,63 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
       })
       .filter((report) => {
         if (!q) return true;
-        return `${report.title} ${report.body} ${report.locationName} ${report.authorName} ${report.state}`.toLowerCase().includes(q);
+        return `${report.title} ${report.body} ${report.locationName} ${report.authorName} ${report.state}`
+          .toLowerCase()
+          .includes(q);
       })
       .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
   }, [activeCategory, activeStatus, reports, search]);
 
-  const selectedCategory = categories.find((category) => category.slug === activeCategory);
-  const liveCount = reports.filter((report) => report.live && report.status !== "rejected").length;
-  const verifiedCount = reports.filter((report) => report.status === "verified").length;
-  const queueCount = reports.filter((report) => report.status === "in_review").length;
-  const stateCount = new Set(reports.filter((report) => report.status !== "rejected").map((report) => report.state)).size;
+  const selectedCategory = categories.find(
+    (category) => category.slug === activeCategory,
+  );
+  const liveCount = reports.filter(
+    (report) => report.live && report.status !== "rejected",
+  ).length;
+  const verifiedCount = reports.filter(
+    (report) => report.status === "verified",
+  ).length;
+  const queueCount = reports.filter(
+    (report) => report.status === "in_review",
+  ).length;
+  const stateCount = new Set(
+    reports
+      .filter((report) => report.status !== "rejected")
+      .map((report) => report.state),
+  ).size;
   const isAdmin = currentUser?.role === "admin";
   const isEditor = currentUser?.role === "editor" || isAdmin;
   const isReporter = Boolean(
-    currentUser && (currentUser.role === "reporter" || currentUser.role === "editor" || currentUser.role === "admin") && currentUser.reporterVerified,
+    currentUser &&
+    (currentUser.role === "reporter" ||
+      currentUser.role === "editor" ||
+      currentUser.role === "admin") &&
+    currentUser.reporterVerified,
   );
-  const roleLabel = currentUser ? (currentUser.id === firstAdminId ? "first admin" : currentUser.role) : "guest";
+  const roleLabel = currentUser
+    ? currentUser.id === firstAdminId
+      ? "first admin"
+      : currentUser.role
+    : "guest";
   const activeNavItems = [
     { href: "#feed", label: "Live Feed", show: true },
-    { href: "#submit", label: isReporter ? "Reporter Desk" : "Submit", show: Boolean(currentUser) },
-    { href: "#kyc", label: "Reporter KYC", show: Boolean(currentUser && !isReporter && !isEditor) },
-    { href: "#editor-apply", label: "Editor Track", show: Boolean(currentUser?.role === "reporter" && currentUser.reporterVerified) },
+    {
+      href: "#submit",
+      label: isReporter ? "Reporter Desk" : "Submit",
+      show: Boolean(currentUser),
+    },
+    {
+      href: "#kyc",
+      label: "Reporter KYC",
+      show: Boolean(currentUser && !isReporter && !isEditor),
+    },
+    {
+      href: "#editor-apply",
+      label: "Editor Track",
+      show: Boolean(
+        currentUser?.role === "reporter" && currentUser.reporterVerified,
+      ),
+    },
     { href: "#editor", label: "Editor Desk", show: Boolean(isEditor) },
     { href: "#admin", label: "Admin", show: Boolean(isAdmin) },
     { href: "#profiles", label: "Profiles", show: true },
@@ -170,8 +238,12 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
     setMyRoleApplication(data.myRoleApplication);
     setFirstAdminId(data.firstAdminId);
 
-    const reporterResponse = await fetch("/api/reporters", { cache: "no-store" });
-    const reporterData = (await reporterResponse.json()) as { reporters: ReporterProfile[] };
+    const reporterResponse = await fetch("/api/reporters", {
+      cache: "no-store",
+    });
+    const reporterData = (await reporterResponse.json()) as {
+      reporters: ReporterProfile[];
+    };
     setReporters(reporterData.reporters);
   }
 
@@ -190,7 +262,11 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const body = Object.fromEntries(form.entries());
-    const response = await fetch("/api/kyc", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const response = await fetch("/api/kyc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
     if (!response.ok) {
       flash("KYC needs more detail");
       return;
@@ -207,7 +283,9 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
       body: JSON.stringify({ role }),
     });
     if (!response.ok) {
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       flash(data?.error ?? "Could not update role");
       return;
     }
@@ -215,14 +293,19 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
     flash("Role updated");
   }
 
-  async function updateStatus(userId: string, status: Extract<UserStatus, "active" | "suspended">) {
+  async function updateStatus(
+    userId: string,
+    status: Extract<UserStatus, "active" | "suspended">,
+  ) {
     const response = await fetch(`/api/admin/users/${userId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
     if (!response.ok) {
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       flash(data?.error ?? "Could not update account");
       return;
     }
@@ -239,7 +322,9 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
       body: JSON.stringify({ note: String(form.get("note") ?? "") }),
     });
     if (!response.ok) {
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       flash(data?.error ?? "Could not apply for editor");
       return;
     }
@@ -248,26 +333,49 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
     flash("Editor application submitted");
   }
 
-  async function reviewRoleApplication(applicationId: string, status: "approved" | "rejected") {
-    const response = await fetch(`/api/admin/role-applications/${applicationId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, reviewerNote: status === "approved" ? "Approved by admin" : "Rejected by admin" }),
-    });
+  async function reviewRoleApplication(
+    applicationId: string,
+    status: "approved" | "rejected",
+  ) {
+    const response = await fetch(
+      `/api/admin/role-applications/${applicationId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status,
+          reviewerNote:
+            status === "approved" ? "Approved by admin" : "Rejected by admin",
+        }),
+      },
+    );
     if (!response.ok) {
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       flash(data?.error ?? "Could not review application");
       return;
     }
     await refreshSession();
-    flash(status === "approved" ? "Reporter promoted to editor" : "Application rejected");
+    flash(
+      status === "approved"
+        ? "Reporter promoted to editor"
+        : "Application rejected",
+    );
   }
 
-  async function reviewKyc(submissionId: string, status: "approved" | "rejected") {
+  async function reviewKyc(
+    submissionId: string,
+    status: "approved" | "rejected",
+  ) {
     const response = await fetch(`/api/admin/kyc/${submissionId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, reviewerNote: status === "approved" ? "Approved by admin" : "Rejected by admin" }),
+      body: JSON.stringify({
+        status,
+        reviewerNote:
+          status === "approved" ? "Approved by admin" : "Rejected by admin",
+      }),
     });
     if (!response.ok) {
       flash("Could not review KYC");
@@ -277,13 +385,24 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
     flash(status === "approved" ? "Reporter verified" : "KYC rejected");
   }
 
-  async function toDataUrl(file: Blob) {
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
+  async function uploadMedia(file: Blob, name: string) {
+    const formData = new FormData();
+    formData.append("file", file, name);
+
+    const response = await fetch("/api/media", {
+      method: "POST",
+      body: formData,
     });
+    const body = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      media?: { type: MediaType; url: string; name?: string };
+    };
+
+    if (!response.ok || !body.media) {
+      throw new Error(body.error || "Could not upload media");
+    }
+
+    return body.media;
   }
 
   async function openLiveCamera() {
@@ -296,7 +415,10 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
       return;
     }
     setLiveOpen(true);
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
     streamRef.current = stream;
     if (videoRef.current) videoRef.current.srcObject = stream;
   }
@@ -313,13 +435,25 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
     if (!streamRef.current) return;
     chunksRef.current = [];
     const recorder = new MediaRecorder(streamRef.current);
-    recorder.ondataavailable = (event) => event.data.size && chunksRef.current.push(event.data);
+    recorder.ondataavailable = (event) =>
+      event.data.size && chunksRef.current.push(event.data);
     recorder.onstop = async () => {
       const blob = new Blob(chunksRef.current, { type: "video/webm" });
-      setMediaPreview({ type: "video", url: await toDataUrl(blob), name: `live-report-${Date.now()}.webm` });
-      closeLiveCamera();
-      document.querySelector("#submit")?.scrollIntoView({ behavior: "smooth" });
-      flash("Live recording attached");
+      const name = `live-report-${Date.now()}.webm`;
+      try {
+        const media = await uploadMedia(blob, name);
+        setMediaPreview(media);
+        document
+          .querySelector("#submit")
+          ?.scrollIntoView({ behavior: "smooth" });
+        flash("Live recording attached");
+      } catch (error) {
+        flash(
+          error instanceof Error ? error.message : "Could not upload media",
+        );
+      } finally {
+        closeLiveCamera();
+      }
     };
     recorderRef.current = recorder;
     recorder.start();
@@ -334,7 +468,10 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
     }
     const form = new FormData(event.currentTarget);
     const isVerifiedReporter =
-      (currentUser.role === "reporter" || currentUser.role === "editor" || currentUser.role === "admin") && currentUser.reporterVerified;
+      (currentUser.role === "reporter" ||
+        currentUser.role === "editor" ||
+        currentUser.role === "admin") &&
+      currentUser.reporterVerified;
     const media = mediaPreview
       ? [
           {
@@ -368,7 +505,12 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
           type: mediaPreview ? ("media" as const) : ("document" as const),
           confidence: 58,
         },
-        { id: `e-${Date.now()}-b`, label: "Location submitted", type: "location" as const, confidence: 72 },
+        {
+          id: `e-${Date.now()}-b`,
+          label: "Location submitted",
+          type: "location" as const,
+          confidence: 72,
+        },
       ],
     };
 
@@ -389,7 +531,9 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
     setActiveCategory("all");
     setActiveStatus("all");
     flash("Report submitted to editor queue");
-    document.querySelector("#feed")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document
+      .querySelector("#feed")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function addComment(report: Report, text: string) {
@@ -413,15 +557,26 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
   }
 
   async function reviewReport(report: Report, decision: "approve" | "reject") {
-    if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "editor")) {
+    if (
+      !currentUser ||
+      (currentUser.role !== "admin" && currentUser.role !== "editor")
+    ) {
       flash("Editor access required");
       return;
     }
-    const response = await fetch(`/api/editor/reports/${report.id}/${decision}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason: decision === "approve" ? "Checks passed in MVP editor desk." : "Rejected by editor desk." }),
-    });
+    const response = await fetch(
+      `/api/editor/reports/${report.id}/${decision}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reason:
+            decision === "approve"
+              ? "Checks passed in MVP editor desk."
+              : "Rejected by editor desk.",
+        }),
+      },
+    );
 
     if (!response.ok) {
       flash("Editor action failed");
@@ -434,7 +589,11 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
 
   async function shareReport(report: Report) {
     const url = `${window.location.origin}/report/${report.slug}`;
-    const shareData = { title: report.title, text: `${report.title} - ${report.locationName}`, url };
+    const shareData = {
+      title: report.title,
+      text: `${report.title} - ${report.locationName}`,
+      url,
+    };
 
     if (navigator.share) {
       await navigator.share(shareData).catch(() => undefined);
@@ -447,7 +606,9 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
 
   function setReporterSearch(name: string) {
     setSearch(name);
-    document.querySelector("#feed")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document
+      .querySelector("#feed")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   return (
@@ -463,15 +624,27 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
 
         <nav className="topnav" aria-label="Primary">
           {activeNavItems.map((item) => (
-            <a href={item.href} key={item.href}>{item.label}</a>
+            <a href={item.href} key={item.href}>
+              {item.label}
+            </a>
           ))}
         </nav>
 
         <div className="top-actions">
-          <button className="icon-button" type="button" aria-label="Toggle theme" title="Toggle theme" onClick={() => setDark((value) => !value)}>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="Toggle theme"
+            title="Toggle theme"
+            onClick={() => setDark((value) => !value)}
+          >
             {dark ? <Sun /> : <Moon />}
           </button>
-          <button className="primary-button" type="button" onClick={openLiveCamera}>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={openLiveCamera}
+          >
             <Radio />
             Go Live
           </button>
@@ -483,8 +656,15 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
           <div className="command-copy">
             <p className="eyebrow">Civic signal room</p>
             <h1 id="dashboardTitle">VisionEcho Live</h1>
-            <p>Field reports, reporter stories, and editor-verified civic updates moving across Nigeria in real time.</p>
-            <button className="primary-button hero-live-button" type="button" onClick={openLiveCamera}>
+            <p>
+              Field reports, reporter stories, and editor-verified civic updates
+              moving across Nigeria in real time.
+            </p>
+            <button
+              className="primary-button hero-live-button"
+              type="button"
+              onClick={openLiveCamera}
+            >
               <Radio />
               Go Live
             </button>
@@ -500,14 +680,37 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
 
         <section className="workspace-grid">
           <aside className="sidebar" aria-label="News controls">
-            <Panel compact title="Categories" action={<button className="ghost-button tiny" onClick={() => setActiveCategory("all")} type="button">Clear</button>}>
+            <Panel
+              compact
+              title="Categories"
+              action={
+                <button
+                  className="ghost-button tiny"
+                  onClick={() => setActiveCategory("all")}
+                  type="button"
+                >
+                  Clear
+                </button>
+              }
+            >
               <div className="category-list">
-                <FilterChip label="All" count={reports.length} active={activeCategory === "all"} onClick={() => setActiveCategory("all")} />
+                <FilterChip
+                  label="All"
+                  count={reports.length}
+                  active={activeCategory === "all"}
+                  onClick={() => setActiveCategory("all")}
+                />
                 {categories.map((category) => (
                   <FilterChip
                     key={category.id}
                     label={category.name}
-                    count={reports.filter((report) => report.categorySlug === category.slug && report.status !== "rejected").length}
+                    count={
+                      reports.filter(
+                        (report) =>
+                          report.categorySlug === category.slug &&
+                          report.status !== "rejected",
+                      ).length
+                    }
                     active={activeCategory === category.slug}
                     onClick={() => setActiveCategory(category.slug)}
                   />
@@ -517,10 +720,30 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
 
             <Panel compact title="Verification">
               <div className="status-list">
-                <FilterChip label="All" count={reports.length} active={activeStatus === "all"} onClick={() => setActiveStatus("all")} />
-                <FilterChip label="Live" count={liveCount} active={activeStatus === "live"} onClick={() => setActiveStatus("live")} />
-                <FilterChip label="Verified" count={verifiedCount} active={activeStatus === "verified"} onClick={() => setActiveStatus("verified")} />
-                <FilterChip label="Review" count={queueCount} active={activeStatus === "in_review"} onClick={() => setActiveStatus("in_review")} />
+                <FilterChip
+                  label="All"
+                  count={reports.length}
+                  active={activeStatus === "all"}
+                  onClick={() => setActiveStatus("all")}
+                />
+                <FilterChip
+                  label="Live"
+                  count={liveCount}
+                  active={activeStatus === "live"}
+                  onClick={() => setActiveStatus("live")}
+                />
+                <FilterChip
+                  label="Verified"
+                  count={verifiedCount}
+                  active={activeStatus === "verified"}
+                  onClick={() => setActiveStatus("verified")}
+                />
+                <FilterChip
+                  label="Review"
+                  count={queueCount}
+                  active={activeStatus === "in_review"}
+                  onClick={() => setActiveStatus("in_review")}
+                />
               </div>
             </Panel>
 
@@ -532,13 +755,21 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
                 <span className="map-pin rivers" title="Rivers" />
               </div>
               <div className="map-legend">
-                <span><b /> Eyewitness</span>
-                <span><b /> Reporter</span>
+                <span>
+                  <b /> Eyewitness
+                </span>
+                <span>
+                  <b /> Reporter
+                </span>
               </div>
             </Panel>
           </aside>
 
-          <section className="feed-column" id="feed" aria-labelledby="feedTitle">
+          <section
+            className="feed-column"
+            id="feed"
+            aria-labelledby="feedTitle"
+          >
             <div className="section-heading">
               <div>
                 <p className="eyebrow">Now tracking</p>
@@ -546,13 +777,22 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
               </div>
               <label className="search-box">
                 <Search />
-                <input value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="Search reports, places, reporters" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  type="search"
+                  placeholder="Search reports, places, reporters"
+                />
               </label>
             </div>
 
             <div className="category-page">
               <div>
-                <h3>{selectedCategory ? `${selectedCategory.name} Page` : "All Categories"}</h3>
+                <h3>
+                  {selectedCategory
+                    ? `${selectedCategory.name} Page`
+                    : "All Categories"}
+                </h3>
                 <p>
                   {selectedCategory?.summary ??
                     "Scan live and verified civic signals across elections, governance, security, infrastructure, economy, and community life."}
@@ -570,20 +810,29 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
                   <ReportCard
                     key={report.id}
                     report={report}
-                    category={categories.find((category) => category.slug === report.categorySlug)}
+                    category={categories.find(
+                      (category) => category.slug === report.categorySlug,
+                    )}
                     onShare={() => shareReport(report)}
                     onReporter={() => setReporterSearch(report.authorName)}
                     onComment={(text) => addComment(report, text)}
                   />
                 ))
               ) : (
-                <div className="empty-state">No live civic reports yet. Sign in and submit the first verified signal from the field.</div>
+                <div className="empty-state">
+                  No live civic reports yet. Sign in and submit the first
+                  verified signal from the field.
+                </div>
               )}
             </div>
           </section>
 
           <aside className="right-rail">
-            <Panel eyebrow="Session" title={currentUser ? "Your Access" : "Access Required"} icon={<UserRound />}>
+            <Panel
+              eyebrow="Session"
+              title={currentUser ? "Your Access" : "Access Required"}
+              icon={<UserRound />}
+            >
               {currentUser ? (
                 <div className="account-summary">
                   <div>
@@ -591,30 +840,81 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
                     <span>{currentUser.email}</span>
                   </div>
                   <div className="evidence-row">
-                    <Pill icon={<UserRound />} text={roleLabel} variant={currentUser.role === "admin" || currentUser.role === "editor" ? "verified" : "review"} />
-                    <Pill icon={<BadgeCheck />} text={`KYC: ${currentUser.kycStatus}`} variant={currentUser.reporterVerified ? "verified" : "review"} />
-                    <Pill icon={<Timer />} text={currentUser.status === "active" ? "active" : "inactive"} variant={currentUser.status === "active" ? "verified" : "review"} />
+                    <Pill
+                      icon={<UserRound />}
+                      text={roleLabel}
+                      variant={
+                        currentUser.role === "admin" ||
+                        currentUser.role === "editor"
+                          ? "verified"
+                          : "review"
+                      }
+                    />
+                    <Pill
+                      icon={<BadgeCheck />}
+                      text={`KYC: ${currentUser.kycStatus}`}
+                      variant={
+                        currentUser.reporterVerified ? "verified" : "review"
+                      }
+                    />
+                    <Pill
+                      icon={<Timer />}
+                      text={
+                        currentUser.status === "active" ? "active" : "inactive"
+                      }
+                      variant={
+                        currentUser.status === "active" ? "verified" : "review"
+                      }
+                    />
                   </div>
-                  <p className="form-note">{roleSummary(currentUser, firstAdminId)}</p>
-                  <button className="ghost-button" type="button" onClick={logout}>Sign out</button>
+                  <p className="form-note">
+                    {roleSummary(currentUser, firstAdminId)}
+                  </p>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    onClick={logout}
+                  >
+                    Sign out
+                  </button>
                 </div>
               ) : (
                 <div className="empty-state">
-                  Login from the landing page to submit reports, complete KYC, comment, or use the editor desk.
-                  <a className="primary-button wide inline-dashboard-link" href="/#access">Login or create account</a>
+                  Login from the landing page to submit reports, complete KYC,
+                  comment, or use the editor desk.
+                  <a
+                    className="primary-button wide inline-dashboard-link"
+                    href="/#access"
+                  >
+                    Login or create account
+                  </a>
                 </div>
               )}
             </Panel>
 
-            <Panel id="submit" eyebrow={isReporter ? "Reporter desk" : "Eyewitness desk"} title={isReporter ? "Submit Story" : "Post Report"} icon={<UploadCloud />}>
+            <Panel
+              id="submit"
+              eyebrow={isReporter ? "Reporter desk" : "Eyewitness desk"}
+              title={isReporter ? "Submit Story" : "Post Report"}
+              icon={<UploadCloud />}
+            >
               <form className="report-form" onSubmit={submitReport}>
                 <label>
                   Title
-                  <input name="title" required maxLength={120} placeholder="What is happening?" />
+                  <input
+                    name="title"
+                    required
+                    maxLength={120}
+                    placeholder="What is happening?"
+                  />
                 </label>
                 <label>
                   Category
-                  <select name="categorySlug" required defaultValue={categories[0]?.slug}>
+                  <select
+                    name="categorySlug"
+                    required
+                    defaultValue={categories[0]?.slug}
+                  >
                     {categories.map((category) => (
                       <option value={category.slug} key={category.slug}>
                         {category.name}
@@ -625,7 +925,11 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
                 <label>
                   Location
                   <div className="location-row">
-                    <input name="locationName" required placeholder="City, state" />
+                    <input
+                      name="locationName"
+                      required
+                      placeholder="City, state"
+                    />
                     <button
                       className="icon-button"
                       type="button"
@@ -633,7 +937,10 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
                       title="Use current location"
                       onClick={() => {
                         navigator.geolocation?.getCurrentPosition(
-                          (position) => flash(`Location captured: ${position.coords.latitude.toFixed(3)}, ${position.coords.longitude.toFixed(3)}`),
+                          (position) =>
+                            flash(
+                              `Location captured: ${position.coords.latitude.toFixed(3)}, ${position.coords.longitude.toFixed(3)}`,
+                            ),
                           () => flash("Location permission not granted"),
                         );
                       }}
@@ -644,11 +951,20 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
                 </label>
                 <label>
                   State
-                  <input name="state" required placeholder="Lagos, Kano, Rivers..." />
+                  <input
+                    name="state"
+                    required
+                    placeholder="Lagos, Kano, Rivers..."
+                  />
                 </label>
                 <label>
                   Report
-                  <textarea name="body" required rows={4} placeholder="Add what you saw, who was present, and what can be verified." />
+                  <textarea
+                    name="body"
+                    required
+                    rows={4}
+                    placeholder="Add what you saw, who was present, and what can be verified."
+                  />
                 </label>
                 <label>
                   Priority
@@ -669,16 +985,30 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
                         setMediaPreview(null);
                         return;
                       }
-                      const type = file.type.startsWith("video") ? "video" : file.type.startsWith("audio") ? "audio" : "image";
-                      toDataUrl(file).then((url) => setMediaPreview({ type, url, name: file.name })).catch(() => flash("Could not read media"));
+                      uploadMedia(file, file.name)
+                        .then(setMediaPreview)
+                        .catch((error) =>
+                          flash(
+                            error instanceof Error
+                              ? error.message
+                              : "Could not upload media",
+                          ),
+                        );
                     }}
                   />
                 </label>
                 <MediaPreview preview={mediaPreview} />
-                {currentUser?.role === "reporter" && currentUser.reporterVerified ? (
-                  <p className="form-note">This will be submitted as a verified reporter story and sent to editors for approval.</p>
+                {currentUser?.role === "reporter" &&
+                currentUser.reporterVerified ? (
+                  <p className="form-note">
+                    This will be submitted as a verified reporter story and sent
+                    to editors for approval.
+                  </p>
                 ) : (
-                  <p className="form-note">This will be submitted as an eyewitness report. Complete reporter KYC to submit reporter stories.</p>
+                  <p className="form-note">
+                    This will be submitted as an eyewitness report. Complete
+                    reporter KYC to submit reporter stories.
+                  </p>
                 )}
                 <button className="primary-button wide" type="submit">
                   <Send />
@@ -688,145 +1018,330 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
             </Panel>
 
             {currentUser && !isReporter && !isEditor ? (
-              <Panel id="kyc" eyebrow="Reporter path" title="Apply for Reporter KYC" icon={<BadgeCheck />}>
+              <Panel
+                id="kyc"
+                eyebrow="Reporter path"
+                title="Apply for Reporter KYC"
+                icon={<BadgeCheck />}
+              >
                 {myKyc?.status === "pending" ? (
-                  <div className="empty-state">Your reporter KYC is pending admin review.</div>
+                  <div className="empty-state">
+                    Your reporter KYC is pending admin review.
+                  </div>
                 ) : (
                   <form className="report-form" onSubmit={submitKyc}>
-                    <label>Full legal name<input name="fullName" required /></label>
-                    <label>Phone<input name="phone" required /></label>
-                    <label>Base location<input name="location" required placeholder="City, state" /></label>
-                    <label>Reporting beat<input name="beat" required placeholder="Elections, security, governance..." /></label>
-                    <label>Experience<textarea name="experience" required rows={3} placeholder="Tell editors about your reporting background and civic coverage experience." /></label>
-                    <label>ID type<input name="idType" required placeholder="NIN, passport, press ID..." /></label>
-                    <label>ID/reference number<input name="idNumber" required /></label>
-                    <button className="primary-button wide" type="submit">Submit Reporter KYC</button>
+                    <label>
+                      Full legal name
+                      <input name="fullName" required />
+                    </label>
+                    <label>
+                      Phone
+                      <input name="phone" required />
+                    </label>
+                    <label>
+                      Base location
+                      <input
+                        name="location"
+                        required
+                        placeholder="City, state"
+                      />
+                    </label>
+                    <label>
+                      Reporting beat
+                      <input
+                        name="beat"
+                        required
+                        placeholder="Elections, security, governance..."
+                      />
+                    </label>
+                    <label>
+                      Experience
+                      <textarea
+                        name="experience"
+                        required
+                        rows={3}
+                        placeholder="Tell editors about your reporting background and civic coverage experience."
+                      />
+                    </label>
+                    <label>
+                      ID type
+                      <input
+                        name="idType"
+                        required
+                        placeholder="NIN, passport, press ID..."
+                      />
+                    </label>
+                    <label>
+                      ID/reference number
+                      <input name="idNumber" required />
+                    </label>
+                    <button className="primary-button wide" type="submit">
+                      Submit Reporter KYC
+                    </button>
                   </form>
                 )}
               </Panel>
             ) : null}
 
-            {currentUser?.role === "reporter" && currentUser.reporterVerified ? (
-              <Panel id="editor-apply" eyebrow="Editor path" title="Apply for Editor Desk" icon={<ShieldCheck />}>
+            {currentUser?.role === "reporter" &&
+            currentUser.reporterVerified ? (
+              <Panel
+                id="editor-apply"
+                eyebrow="Editor path"
+                title="Apply for Editor Desk"
+                icon={<ShieldCheck />}
+              >
                 {myRoleApplication ? (
-                  <div className="empty-state">Your editor application is pending admin review.</div>
+                  <div className="empty-state">
+                    Your editor application is pending admin review.
+                  </div>
                 ) : (
-                  <form className="report-form" onSubmit={submitEditorApplication}>
+                  <form
+                    className="report-form"
+                    onSubmit={submitEditorApplication}
+                  >
                     <label>
                       Why should you become an editor?
-                      <textarea name="note" required rows={4} placeholder="Describe your reporting record, verification judgment, and availability for editor desk work." />
+                      <textarea
+                        name="note"
+                        required
+                        rows={4}
+                        placeholder="Describe your reporting record, verification judgment, and availability for editor desk work."
+                      />
                     </label>
-                    <button className="primary-button wide" type="submit">Apply for Editor</button>
+                    <button className="primary-button wide" type="submit">
+                      Apply for Editor
+                    </button>
                   </form>
                 )}
               </Panel>
             ) : null}
 
             {isEditor ? (
-              <Panel id="editor" eyebrow="Verification desk" title="Editor Queue" icon={<ShieldCheck />}>
+              <Panel
+                id="editor"
+                eyebrow="Verification desk"
+                title="Editor Queue"
+                icon={<ShieldCheck />}
+              >
                 <div className="queue-list">
-                  {reports.filter((report) => report.status === "in_review").length ? (
+                  {reports.filter((report) => report.status === "in_review")
+                    .length ? (
                     reports
                       .filter((report) => report.status === "in_review")
                       .map((report) => (
                         <article className="queue-item" key={report.id}>
                           <h3>{report.title}</h3>
-                          <p>{report.locationName} by {report.authorName}</p>
+                          <p>
+                            {report.locationName} by {report.authorName}
+                          </p>
                           <div className="queue-actions">
-                            <button className="approve" type="button" onClick={() => reviewReport(report, "approve")}>
+                            <button
+                              className="approve"
+                              type="button"
+                              onClick={() => reviewReport(report, "approve")}
+                            >
                               Approve
                             </button>
-                            <button className="reject" type="button" onClick={() => reviewReport(report, "reject")}>
+                            <button
+                              className="reject"
+                              type="button"
+                              onClick={() => reviewReport(report, "reject")}
+                            >
                               Reject
                             </button>
                           </div>
                         </article>
                       ))
                   ) : (
-                    <div className="empty-state">No stories waiting for review.</div>
+                    <div className="empty-state">
+                      No stories waiting for review.
+                    </div>
                   )}
                 </div>
               </Panel>
             ) : null}
 
-            <Panel id="profiles" eyebrow="Network" title="Reporter Profiles" icon={<Users />}>
+            <Panel
+              id="profiles"
+              eyebrow="Network"
+              title="Reporter Profiles"
+              icon={<Users />}
+            >
               <div className="profile-list">
-                {reporters.length ? reporters.map((reporter) => (
-                  <article className="profile-card" key={reporter.id}>
-                    <div className="profile-topline">
-                      <span className="avatar">{reporter.initials}</span>
-                      <div>
-                        <h3>{reporter.name}</h3>
-                        <p>{reporter.beat} - {reporter.base}</p>
+                {reporters.length ? (
+                  reporters.map((reporter) => (
+                    <article className="profile-card" key={reporter.id}>
+                      <div className="profile-topline">
+                        <span className="avatar">{reporter.initials}</span>
+                        <div>
+                          <h3>{reporter.name}</h3>
+                          <p>
+                            {reporter.beat} - {reporter.base}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="profile-stats">
-                      <span>{reporter.verifiedStories} verified</span>
-                      <span>{reporter.totalStories} stories</span>
-                      <span>{reporter.trustScore}% trust</span>
-                    </div>
-                    <button type="button" className="profile-action" onClick={() => setReporterSearch(reporter.name)}>
-                      <ListFilter />
-                      View stories
-                    </button>
-                  </article>
-                )) : <div className="empty-state">No verified reporters yet. Admin-approved KYC profiles will appear here.</div>}
+                      <div className="profile-stats">
+                        <span>{reporter.verifiedStories} verified</span>
+                        <span>{reporter.totalStories} stories</span>
+                        <span>{reporter.trustScore}% trust</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="profile-action"
+                        onClick={() => setReporterSearch(reporter.name)}
+                      >
+                        <ListFilter />
+                        View stories
+                      </button>
+                    </article>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    No verified reporters yet. Admin-approved KYC profiles will
+                    appear here.
+                  </div>
+                )}
               </div>
             </Panel>
 
             {isAdmin && currentUser ? (
-              <Panel id="admin" eyebrow={currentUser.id === firstAdminId ? "First admin desk" : "Admin desk"} title="Roles, Status & Applications" icon={<ShieldCheck />}>
+              <Panel
+                id="admin"
+                eyebrow={
+                  currentUser.id === firstAdminId
+                    ? "First admin desk"
+                    : "Admin desk"
+                }
+                title="Roles, Status & Applications"
+                icon={<ShieldCheck />}
+              >
                 <div className="queue-list">
                   {users.map((user) => (
                     <article className="queue-item" key={user.id}>
-                      <h3>{user.name}{user.id === firstAdminId ? " · first admin" : ""}</h3>
-                      <p>{user.email} - {user.role} - {user.status === "active" ? "active" : "deactivated"} - KYC {user.kycStatus}</p>
+                      <h3>
+                        {user.name}
+                        {user.id === firstAdminId ? " · first admin" : ""}
+                      </h3>
+                      <p>
+                        {user.email} - {user.role} -{" "}
+                        {user.status === "active" ? "active" : "deactivated"} -
+                        KYC {user.kycStatus}
+                      </p>
                       <div className="queue-actions">
-                        {(["user", "reporter", "editor", "admin"] as UserRole[]).map((role) => (
+                        {(
+                          ["user", "reporter", "editor", "admin"] as UserRole[]
+                        ).map((role) => (
                           <button
                             type="button"
                             key={role}
-                            disabled={!canAdminAssignRole(currentUser, user, role, firstAdminId)}
+                            disabled={
+                              !canAdminAssignRole(
+                                currentUser,
+                                user,
+                                role,
+                                firstAdminId,
+                              )
+                            }
                             onClick={() => updateRole(user.id, role)}
                           >
                             {role}
                           </button>
                         ))}
                         <button
-                          className={user.status === "active" ? "reject" : "approve"}
+                          className={
+                            user.status === "active" ? "reject" : "approve"
+                          }
                           type="button"
-                          disabled={!canAdminChangeStatus(currentUser, user, firstAdminId)}
-                          onClick={() => updateStatus(user.id, user.status === "active" ? "suspended" : "active")}
+                          disabled={
+                            !canAdminChangeStatus(
+                              currentUser,
+                              user,
+                              firstAdminId,
+                            )
+                          }
+                          onClick={() =>
+                            updateStatus(
+                              user.id,
+                              user.status === "active" ? "suspended" : "active",
+                            )
+                          }
                         >
                           {user.status === "active" ? "Deactivate" : "Activate"}
                         </button>
                       </div>
                     </article>
                   ))}
-                  {kycSubmissions.filter((submission) => submission.status === "pending").map((submission) => (
-                    <article className="queue-item" key={submission.id}>
-                      <h3>{submission.fullName}</h3>
-                      <p>Reporter KYC - {submission.beat} - {submission.location}</p>
-                      <div className="queue-actions">
-                        <button className="approve" type="button" onClick={() => reviewKyc(submission.id, "approved")}>Approve Reporter</button>
-                        <button className="reject" type="button" onClick={() => reviewKyc(submission.id, "rejected")}>Reject</button>
-                      </div>
-                    </article>
-                  ))}
-                  {roleApplications.filter((application) => application.status === "pending").map((application) => {
-                    const applicant = users.find((user) => user.id === application.userId);
-                    return (
-                      <article className="queue-item" key={application.id}>
-                        <h3>{applicant?.name ?? "Reporter application"}</h3>
-                        <p>Editor application - {applicant?.email ?? application.userId}</p>
-                        <p>{application.note}</p>
+                  {kycSubmissions
+                    .filter((submission) => submission.status === "pending")
+                    .map((submission) => (
+                      <article className="queue-item" key={submission.id}>
+                        <h3>{submission.fullName}</h3>
+                        <p>
+                          Reporter KYC - {submission.beat} -{" "}
+                          {submission.location}
+                        </p>
                         <div className="queue-actions">
-                          <button className="approve" type="button" onClick={() => reviewRoleApplication(application.id, "approved")}>Approve Editor</button>
-                          <button className="reject" type="button" onClick={() => reviewRoleApplication(application.id, "rejected")}>Reject</button>
+                          <button
+                            className="approve"
+                            type="button"
+                            onClick={() => reviewKyc(submission.id, "approved")}
+                          >
+                            Approve Reporter
+                          </button>
+                          <button
+                            className="reject"
+                            type="button"
+                            onClick={() => reviewKyc(submission.id, "rejected")}
+                          >
+                            Reject
+                          </button>
                         </div>
                       </article>
-                    );
-                  })}
+                    ))}
+                  {roleApplications
+                    .filter((application) => application.status === "pending")
+                    .map((application) => {
+                      const applicant = users.find(
+                        (user) => user.id === application.userId,
+                      );
+                      return (
+                        <article className="queue-item" key={application.id}>
+                          <h3>{applicant?.name ?? "Reporter application"}</h3>
+                          <p>
+                            Editor application -{" "}
+                            {applicant?.email ?? application.userId}
+                          </p>
+                          <p>{application.note}</p>
+                          <div className="queue-actions">
+                            <button
+                              className="approve"
+                              type="button"
+                              onClick={() =>
+                                reviewRoleApplication(
+                                  application.id,
+                                  "approved",
+                                )
+                              }
+                            >
+                              Approve Editor
+                            </button>
+                            <button
+                              className="reject"
+                              type="button"
+                              onClick={() =>
+                                reviewRoleApplication(
+                                  application.id,
+                                  "rejected",
+                                )
+                              }
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
                 </div>
               </Panel>
             ) : null}
@@ -840,29 +1355,77 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
       </footer>
 
       <nav className="mobile-dock" aria-label="Mobile quick actions">
-        <a href="#feed"><Radio /> Feed</a>
-        {currentUser ? <a href="#submit"><UploadCloud /> Submit</a> : null}
-        {isEditor ? <a href="#editor"><ShieldCheck /> Verify</a> : null}
-        {isAdmin ? <a href="#admin"><Users /> Admin</a> : <a href="#profiles"><Users /> Profiles</a>}
+        <a href="#feed">
+          <Radio /> Feed
+        </a>
+        {currentUser ? (
+          <a href="#submit">
+            <UploadCloud /> Submit
+          </a>
+        ) : null}
+        {isEditor ? (
+          <a href="#editor">
+            <ShieldCheck /> Verify
+          </a>
+        ) : null}
+        {isAdmin ? (
+          <a href="#admin">
+            <Users /> Admin
+          </a>
+        ) : (
+          <a href="#profiles">
+            <Users /> Profiles
+          </a>
+        )}
       </nav>
 
       {toast ? <div className="toast">{toast}</div> : null}
       {liveOpen ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Live camera recorder">
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Live camera recorder"
+        >
           <div className="live-modal">
             <div className="panel-title-row">
               <div>
                 <p className="eyebrow">Go live</p>
                 <h2>Record field evidence</h2>
               </div>
-              <button className="icon-button" type="button" onClick={closeLiveCamera} aria-label="Close recorder">×</button>
+              <button
+                className="icon-button"
+                type="button"
+                onClick={closeLiveCamera}
+                aria-label="Close recorder"
+              >
+                ×
+              </button>
             </div>
-            <video ref={videoRef} autoPlay muted playsInline className="live-preview" />
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className="live-preview"
+            />
             <div className="queue-actions">
               {!recording ? (
-                <button className="primary-button" type="button" onClick={startRecording}><Camera /> Start recording</button>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={startRecording}
+                >
+                  <Camera /> Start recording
+                </button>
               ) : (
-                <button className="primary-button" type="button" onClick={() => recorderRef.current?.stop()}><StopCircle /> Stop and attach</button>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => recorderRef.current?.stop()}
+                >
+                  <StopCircle /> Stop and attach
+                </button>
               )}
             </div>
           </div>
@@ -873,28 +1436,44 @@ export function VisionEchoApp({ initialCategories, initialReporters, initialRepo
 }
 
 function roleSummary(user: PublicUser, firstAdminId: string | null) {
-  if (user.id === firstAdminId) return "You are the first admin. You can manage all roles, statuses, KYC, and admin access.";
-  if (user.role === "admin") return "You can review KYC, approve editor applications, assign roles, and manage non-protected accounts.";
-  if (user.role === "editor") return "You can verify or reject submitted stories and continue submitting verified field reports.";
-  if (user.role === "reporter" && user.reporterVerified) return "You can submit verified reporter stories and apply to join the editor desk.";
+  if (user.id === firstAdminId)
+    return "You are the first admin. You can manage all roles, statuses, KYC, and admin access.";
+  if (user.role === "admin")
+    return "You can review KYC, approve editor applications, assign roles, and manage non-protected accounts.";
+  if (user.role === "editor")
+    return "You can verify or reject submitted stories and continue submitting verified field reports.";
+  if (user.role === "reporter" && user.reporterVerified)
+    return "You can submit verified reporter stories and apply to join the editor desk.";
   return "You can submit eyewitness reports and apply for reporter KYC when ready.";
 }
 
-function canAdminAssignRole(actor: PublicUser, target: PublicUser, role: UserRole, firstAdminId: string | null) {
+function canAdminAssignRole(
+  actor: PublicUser,
+  target: PublicUser,
+  role: UserRole,
+  firstAdminId: string | null,
+) {
   const actorIsFirstAdmin = actor.id === firstAdminId;
   const targetIsFirstAdmin = target.id === firstAdminId;
   if (targetIsFirstAdmin && !actorIsFirstAdmin) return false;
-  if (target.role === "admin" && role !== "admin" && !actorIsFirstAdmin) return false;
+  if (target.role === "admin" && role !== "admin" && !actorIsFirstAdmin)
+    return false;
   if (role === "reporter" && target.kycStatus !== "approved") return false;
-  if (role === "editor" && !target.reporterVerified && target.role !== "admin") return false;
+  if (role === "editor" && !target.reporterVerified && target.role !== "admin")
+    return false;
   return true;
 }
 
-function canAdminChangeStatus(actor: PublicUser, target: PublicUser, firstAdminId: string | null) {
+function canAdminChangeStatus(
+  actor: PublicUser,
+  target: PublicUser,
+  firstAdminId: string | null,
+) {
   const actorIsFirstAdmin = actor.id === firstAdminId;
   if (target.id === actor.id) return false;
   if (target.id === firstAdminId && !actorIsFirstAdmin) return false;
-  if (target.role === "admin" && !actorIsFirstAdmin && target.id !== actor.id) return false;
+  if (target.role === "admin" && !actorIsFirstAdmin && target.id !== actor.id)
+    return false;
   return true;
 }
 
@@ -925,7 +1504,11 @@ function Panel({
   id?: string;
 }) {
   return (
-    <section className={`panel ${compact ? "compact" : ""}`} id={id} aria-labelledby={id ? `${id}Title` : undefined}>
+    <section
+      className={`panel ${compact ? "compact" : ""}`}
+      id={id}
+      aria-labelledby={id ? `${id}Title` : undefined}
+    >
       <div className="panel-title-row">
         <div>
           {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
@@ -938,9 +1521,23 @@ function Panel({
   );
 }
 
-function FilterChip({ label, count, active, onClick }: { label: string; count: number; active: boolean; onClick: () => void }) {
+function FilterChip({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
-    <button className={`filter-chip ${active ? "active" : ""}`} type="button" onClick={onClick}>
+    <button
+      className={`filter-chip ${active ? "active" : ""}`}
+      type="button"
+      onClick={onClick}
+    >
       {label}
       <span>{count}</span>
     </button>
@@ -961,7 +1558,9 @@ function ReportCard({
   onComment: (text: string) => void;
 }) {
   const [comment, setComment] = useState("");
-  const CategoryIcon = category ? iconMap[category.icon as keyof typeof iconMap] ?? Newspaper : Newspaper;
+  const CategoryIcon = category
+    ? (iconMap[category.icon as keyof typeof iconMap] ?? Newspaper)
+    : Newspaper;
 
   return (
     <article className="report-card" id={report.id}>
@@ -973,7 +1572,10 @@ function ReportCard({
         <div className="report-meta">
           <Pill icon={<CategoryIcon />} text={category?.name ?? "Report"} />
           <Pill icon={<MapPin />} text={report.locationName} />
-          <Pill icon={report.sourceType === "Reporter" ? <Mic2 /> : <Eye />} text={report.sourceType} />
+          <Pill
+            icon={report.sourceType === "Reporter" ? <Mic2 /> : <Eye />}
+            text={report.sourceType}
+          />
           <span>{formatTime(report.createdAt)}</span>
         </div>
         <h3>{report.title}</h3>
@@ -986,11 +1588,22 @@ function ReportCard({
           />
           <Pill icon={<Paperclip />} text={report.media[0]?.type ?? "Text"} />
           {report.evidence.slice(0, 3).map((evidence) => (
-            <Pill key={evidence.id} icon={<CheckCircle2 />} text={evidence.label} />
+            <Pill
+              key={evidence.id}
+              icon={<CheckCircle2 />}
+              text={evidence.label}
+            />
           ))}
         </div>
         <div className="action-row">
-          <button type="button" onClick={() => document.querySelector<HTMLInputElement>(`#comment-${report.id}`)?.focus()}>
+          <button
+            type="button"
+            onClick={() =>
+              document
+                .querySelector<HTMLInputElement>(`#comment-${report.id}`)
+                ?.focus()
+            }
+          >
             <MessageCircle />
             {report.comments.length} comments
           </button>
@@ -1022,7 +1635,12 @@ function ReportCard({
               setComment("");
             }}
           >
-            <input id={`comment-${report.id}`} value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Add a comment" />
+            <input
+              id={`comment-${report.id}`}
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+              placeholder="Add a comment"
+            />
             <button type="submit">
               <Send />
               Post
@@ -1036,8 +1654,10 @@ function ReportCard({
 
 function ReportMedia({ report }: { report: Report }) {
   const media = report.media[0];
-  if (media?.type === "image" && media.url) return <img src={media.url} alt={report.title} />;
-  if (media?.type === "video" && media.url) return <video src={media.url} controls playsInline />;
+  if (media?.type === "image" && media.url)
+    return <img src={media.url} alt={report.title} />;
+  if (media?.type === "video" && media.url)
+    return <video src={media.url} controls playsInline />;
   if (media?.type === "audio") {
     return (
       <>
@@ -1049,15 +1669,42 @@ function ReportMedia({ report }: { report: Report }) {
   return <div className="media-fallback">{report.categorySlug} report</div>;
 }
 
-function MediaPreview({ preview }: { preview: { type: MediaType; url: string; name?: string } | null }) {
+function MediaPreview({
+  preview,
+}: {
+  preview: { type: MediaType; url: string; name?: string } | null;
+}) {
   if (!preview) return <div className="media-preview">No media selected</div>;
-  if (preview.type === "image") return <div className="media-preview"><img src={preview.url} alt="Selected media" /></div>;
-  if (preview.type === "video") return <div className="media-preview"><video src={preview.url} controls /></div>;
-  if (preview.type === "audio") return <div className="media-preview"><audio src={preview.url} controls /></div>;
+  if (preview.type === "image")
+    return (
+      <div className="media-preview">
+        <img src={preview.url} alt="Selected media" />
+      </div>
+    );
+  if (preview.type === "video")
+    return (
+      <div className="media-preview">
+        <video src={preview.url} controls />
+      </div>
+    );
+  if (preview.type === "audio")
+    return (
+      <div className="media-preview">
+        <audio src={preview.url} controls />
+      </div>
+    );
   return <div className="media-preview">{preview.name ?? "Selected file"}</div>;
 }
 
-function Pill({ icon, text, variant = "" }: { icon: React.ReactNode; text: string; variant?: string }) {
+function Pill({
+  icon,
+  text,
+  variant = "",
+}: {
+  icon: React.ReactNode;
+  text: string;
+  variant?: string;
+}) {
   return (
     <span className={`pill ${variant}`}>
       {icon}

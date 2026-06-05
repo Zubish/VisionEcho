@@ -6,7 +6,10 @@ export async function GET() {
   const reporters = db.users
     .filter((user) => user.role === "reporter" && user.reporterVerified)
     .map((user) => {
-      const kyc = db.kycSubmissions.find((submission) => submission.userId === user.id && submission.status === "approved");
+      const kyc = db.kycSubmissions.find(
+        (submission) =>
+          submission.userId === user.id && submission.status === "approved",
+      );
       return {
         id: user.id,
         name: user.name,
@@ -19,8 +22,12 @@ export async function GET() {
         beat: kyc?.beat ?? "Civic reporting",
         base: kyc?.location ?? "Nigeria",
         bio: kyc?.experience ?? "Verified VisionEcho field reporter.",
-        verifiedStories: db.reports.filter((report) => report.authorId === user.id && report.status === "verified").length,
-        totalStories: db.reports.filter((report) => report.authorId === user.id).length,
+        verifiedStories: db.reports.filter(
+          (report) =>
+            report.authorId === user.id && report.status === "verified",
+        ).length,
+        totalStories: db.reports.filter((report) => report.authorId === user.id)
+          .length,
         trustScore: 90,
         status: "verified" as const,
       };

@@ -3,7 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "VisionEcho Live",
-  description: "Live Nigerian civic news, eyewitness reports, reporter stories, and editor verification.",
+  description:
+    "Live Nigerian civic news, eyewitness reports, reporter stories, and editor verification.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -19,7 +20,9 @@ export const viewport: Viewport = {
   themeColor: "#0e7a56",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body>{children}</body>

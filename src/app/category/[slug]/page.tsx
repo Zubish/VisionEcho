@@ -8,9 +8,19 @@ type PageProps = {
 
 export default async function CategoryPage({ params }: PageProps) {
   const { slug } = await params;
-  const [db, reports] = await Promise.all([getDb(), listReports({ category: slug })]);
+  const [db, reports] = await Promise.all([
+    getDb(),
+    listReports({ category: slug }),
+  ]);
 
   if (!db.categories.some((category) => category.slug === slug)) notFound();
 
-  return <VisionEchoApp initialCategories={db.categories} initialReporters={db.reporters} initialReports={reports} initialCategory={slug} />;
+  return (
+    <VisionEchoApp
+      initialCategories={db.categories}
+      initialReporters={db.reporters}
+      initialReports={reports}
+      initialCategory={slug}
+    />
+  );
 }

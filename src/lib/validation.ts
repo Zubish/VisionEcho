@@ -1,5 +1,20 @@
 import { z } from "zod";
 
+export const reportMediaMaxBytes = 3 * 1024 * 1024;
+export const reportMediaMaxDataUrlLength = 4_250_000;
+export const reportMediaMimeTypes = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "video/webm",
+  "video/mp4",
+  "audio/webm",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/wav",
+] as const;
+
 export const reportInputSchema = z.object({
   title: z.string().min(8).max(120),
   body: z.string().min(20).max(4000),
@@ -19,11 +34,12 @@ export const reportInputSchema = z.object({
       z.object({
         id: z.string(),
         type: z.enum(["text", "image", "video", "audio", "document"]),
-        url: z.string(),
-        name: z.string().optional(),
+        url: z.string().min(1).max(reportMediaMaxDataUrlLength),
+        name: z.string().max(160).optional(),
         status: z.enum(["uploaded", "approved", "rejected", "quarantined"]),
       }),
     )
+    .max(1)
     .default([]),
   evidence: z
     .array(
@@ -35,7 +51,17 @@ export const reportInputSchema = z.object({
       }),
     )
     .default([]),
-  status: z.enum(["submitted", "in_review", "needs_more_info", "verified", "rejected", "archived", "flagged"]).default("in_review"),
+  status: z
+    .enum([
+      "submitted",
+      "in_review",
+      "needs_more_info",
+      "verified",
+      "rejected",
+      "archived",
+      "flagged",
+    ])
+    .default("in_review"),
 });
 
 export const signupSchema = z.object({

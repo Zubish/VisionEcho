@@ -5,7 +5,11 @@ import { signupSchema } from "@/lib/validation";
 
 export async function POST(request: NextRequest) {
   const parsed = signupSchema.safeParse(await request.json());
-  if (!parsed.success) return NextResponse.json({ error: "Invalid signup details" }, { status: 400 });
+  if (!parsed.success)
+    return NextResponse.json(
+      { error: "Invalid signup details" },
+      { status: 400 },
+    );
 
   try {
     const user = await createUser({
@@ -16,6 +20,9 @@ export async function POST(request: NextRequest) {
     await createSession(user.id);
     return NextResponse.json({ user: toPublicUser(user) }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Signup failed" }, { status: 409 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Signup failed" },
+      { status: 409 },
+    );
   }
 }

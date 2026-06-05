@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
     stats: {
       live: reports.filter((report) => report.live).length,
       verified: reports.filter((report) => report.status === "verified").length,
-      inReview: reports.filter((report) => report.status === "in_review").length,
+      inReview: reports.filter((report) => report.status === "in_review")
+        .length,
       states: new Set(reports.map((report) => report.state)).size,
     },
   });
@@ -29,17 +30,29 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
-  if (user.status !== "active") return NextResponse.json({ error: "Account is not active" }, { status: 403 });
+  if (!user)
+    return NextResponse.json({ error: "Login required" }, { status: 401 });
+  if (user.status !== "active")
+    return NextResponse.json(
+      { error: "Account is not active" },
+      { status: 403 },
+    );
 
   const body = await request.json();
   const parsed = reportInputSchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid report", details: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid report", details: parsed.error.flatten() },
+      { status: 400 },
+    );
   }
 
-  const isVerifiedReporter = (user.role === "reporter" || user.role === "editor" || user.role === "admin") && user.reporterVerified;
+  const isVerifiedReporter =
+    (user.role === "reporter" ||
+      user.role === "editor" ||
+      user.role === "admin") &&
+    user.reporterVerified;
   const report = await createReport({
     ...parsed.data,
     authorId: user.id,

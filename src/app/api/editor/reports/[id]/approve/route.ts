@@ -9,13 +9,22 @@ type RouteContext = {
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const user = await getCurrentUser();
-  if (!canEdit(user)) return NextResponse.json({ error: "Editor access required" }, { status: 403 });
+  if (!canEdit(user))
+    return NextResponse.json(
+      { error: "Editor access required" },
+      { status: 403 },
+    );
 
   const { id } = await context.params;
-  const parsed = reviewInputSchema.safeParse(await request.json().catch(() => ({})));
+  const parsed = reviewInputSchema.safeParse(
+    await request.json().catch(() => ({})),
+  );
 
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid review decision" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid review decision" },
+      { status: 400 },
+    );
   }
 
   try {

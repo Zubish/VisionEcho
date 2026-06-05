@@ -7,14 +7,26 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const currentUser = await getCurrentUser();
-  if (!canAdmin(currentUser)) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  if (!canAdmin(currentUser))
+    return NextResponse.json(
+      { error: "Admin access required" },
+      { status: 403 },
+    );
 
   const { id } = await context.params;
   const parsed = kycReviewSchema.safeParse(await request.json());
-  if (!parsed.success) return NextResponse.json({ error: "Invalid KYC decision" }, { status: 400 });
+  if (!parsed.success)
+    return NextResponse.json(
+      { error: "Invalid KYC decision" },
+      { status: 400 },
+    );
 
   try {
-    const submission = await reviewKyc(id, parsed.data.status, parsed.data.reviewerNote);
+    const submission = await reviewKyc(
+      id,
+      parsed.data.status,
+      parsed.data.reviewerNote,
+    );
     return NextResponse.json({ submission });
   } catch {
     return NextResponse.json({ error: "KYC not found" }, { status: 404 });

@@ -13,15 +13,28 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
+  if (!user)
+    return NextResponse.json({ error: "Login required" }, { status: 401 });
 
   const parsed = roleApplicationSchema.safeParse(await request.json());
-  if (!parsed.success) return NextResponse.json({ error: "Application needs more detail" }, { status: 400 });
+  if (!parsed.success)
+    return NextResponse.json(
+      { error: "Application needs more detail" },
+      { status: 400 },
+    );
 
   try {
     const application = await submitRoleApplication(user.id, parsed.data.note);
     return NextResponse.json({ application }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Could not submit application" }, { status: 403 });
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Could not submit application",
+      },
+      { status: 403 },
+    );
   }
 }

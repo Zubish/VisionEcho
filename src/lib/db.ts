@@ -38,7 +38,9 @@ function getSql() {
 function requireSql() {
   const sql = getSql();
   if (!sql) {
-    throw new Error("DATABASE_URL is required for persistent production storage.");
+    throw new Error(
+      "DATABASE_URL is required for persistent production storage.",
+    );
   }
   return sql;
 }
@@ -109,8 +111,14 @@ function toReport(row: Record<string, unknown>): Report {
     categorySlug: String(row.category_slug),
     locationName: String(row.location_name),
     state: String(row.state),
-    latitude: row.latitude === null || row.latitude === undefined ? undefined : Number(row.latitude),
-    longitude: row.longitude === null || row.longitude === undefined ? undefined : Number(row.longitude),
+    latitude:
+      row.latitude === null || row.latitude === undefined
+        ? undefined
+        : Number(row.latitude),
+    longitude:
+      row.longitude === null || row.longitude === undefined
+        ? undefined
+        : Number(row.longitude),
     sourceType: row.source_type as Report["sourceType"],
     authorId: row.author_id ? String(row.author_id) : undefined,
     authorName: String(row.author_name),
@@ -275,14 +283,16 @@ async function listPostgresUsers() {
 async function listPostgresKyc() {
   await ensurePostgresSchema();
   const sql = requireSql();
-  const rows = await sql`SELECT * FROM kyc_submissions ORDER BY created_at DESC`;
+  const rows =
+    await sql`SELECT * FROM kyc_submissions ORDER BY created_at DESC`;
   return rows.map(toKyc);
 }
 
 async function listPostgresRoleApplications() {
   await ensurePostgresSchema();
   const sql = requireSql();
-  const rows = await sql`SELECT * FROM role_applications ORDER BY created_at DESC`;
+  const rows =
+    await sql`SELECT * FROM role_applications ORDER BY created_at DESC`;
   return rows.map(toRoleApplication);
 }
 
@@ -293,12 +303,21 @@ async function listPostgresReports() {
   return rows.map(toReport);
 }
 
-async function listReporterProfiles(users: User[], kycSubmissions: KycSubmission[], reports: Report[]) {
+async function listReporterProfiles(
+  users: User[],
+  kycSubmissions: KycSubmission[],
+  reports: Report[],
+) {
   return users
     .filter((user) => user.role === "reporter" && user.reporterVerified)
     .map((user) => {
-      const kyc = kycSubmissions.find((submission) => submission.userId === user.id && submission.status === "approved");
-      const authoredReports = reports.filter((report) => report.authorId === user.id);
+      const kyc = kycSubmissions.find(
+        (submission) =>
+          submission.userId === user.id && submission.status === "approved",
+      );
+      const authoredReports = reports.filter(
+        (report) => report.authorId === user.id,
+      );
       return {
         id: user.id,
         name: user.name,
@@ -311,7 +330,9 @@ async function listReporterProfiles(users: User[], kycSubmissions: KycSubmission
         beat: kyc?.beat ?? "Civic reporting",
         base: kyc?.location ?? "Nigeria",
         bio: kyc?.experience ?? "Verified VisionEcho field reporter.",
-        verifiedStories: authoredReports.filter((report) => report.status === "verified").length,
+        verifiedStories: authoredReports.filter(
+          (report) => report.status === "verified",
+        ).length,
         totalStories: authoredReports.length,
         trustScore: 90,
         status: "verified" as const,
@@ -332,12 +353,21 @@ export async function getDb() {
     listPostgresRoleApplications(),
   ]);
   const reporters = await listReporterProfiles(users, kycSubmissions, reports);
-  return { categories, reporters, reports, users, kycSubmissions, roleApplications };
+  return {
+    categories,
+    reporters,
+    reports,
+    users,
+    kycSubmissions,
+    roleApplications,
+  };
 }
 
 export async function saveDb(mutator: (db: VisionEchoDb) => void) {
   if (shouldUsePostgres() || isServerlessRuntime) {
-    throw new Error("saveDb is only available for local JSON development storage.");
+    throw new Error(
+      "saveDb is only available for local JSON development storage.",
+    );
   }
 
   return saveLocalDb(mutator);
@@ -350,18 +380,44 @@ export async function listReports(filters?: {
   q?: string;
   state?: string;
 }) {
-  const reports = shouldUsePostgres() ? await listPostgresReports() : (await getDb()).reports;
+  const reports = shouldUsePostgres()
+    ? await listPostgresReports()
+    : (await getDb()).reports;
   const q = filters?.q?.toLowerCase().trim();
 
   return reports
-    .filter((report) => report.status !== "rejected" && report.status !== "archived")
-    .filter((report) => !filters?.category || filters.category === "all" || report.categorySlug === filters.category)
-    .filter((report) => !filters?.status || filters.status === "all" || report.status === filters.status)
-    .filter((report) => filters?.live === undefined || filters.live === "all" || String(report.live) === filters.live)
-    .filter((report) => !filters?.state || filters.state === "all" || report.state.toLowerCase() === filters.state.toLowerCase())
+    .filter(
+      (report) => report.status !== "rejected" && report.status !== "archived",
+    )
+    .filter(
+      (report) =>
+        !filters?.category ||
+        filters.category === "all" ||
+        report.categorySlug === filters.category,
+    )
+    .filter(
+      (report) =>
+        !filters?.status ||
+        filters.status === "all" ||
+        report.status === filters.status,
+    )
+    .filter(
+      (report) =>
+        filters?.live === undefined ||
+        filters.live === "all" ||
+        String(report.live) === filters.live,
+    )
+    .filter(
+      (report) =>
+        !filters?.state ||
+        filters.state === "all" ||
+        report.state.toLowerCase() === filters.state.toLowerCase(),
+    )
     .filter((report) => {
       if (!q) return true;
-      return `${report.title} ${report.body} ${report.locationName} ${report.authorName}`.toLowerCase().includes(q);
+      return `${report.title} ${report.body} ${report.locationName} ${report.authorName}`
+        .toLowerCase()
+        .includes(q);
     })
     .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
 }
@@ -382,23 +438,31 @@ export async function getUserByEmail(email: string) {
   if (shouldUsePostgres()) {
     await ensurePostgresSchema();
     const sql = requireSql();
-    const rows = await sql`SELECT * FROM users WHERE lower(email) = lower(${email}) LIMIT 1`;
+    const rows =
+      await sql`SELECT * FROM users WHERE lower(email) = lower(${email}) LIMIT 1`;
     return rows[0] ? toUser(rows[0]) : null;
   }
 
   const db = await getDb();
-  return db.users.find((user) => user.email.toLowerCase() === email.toLowerCase()) ?? null;
+  return (
+    db.users.find((user) => user.email.toLowerCase() === email.toLowerCase()) ??
+    null
+  );
 }
 
-export async function createUser(input: Pick<User, "name" | "email" | "passwordHash">) {
+export async function createUser(
+  input: Pick<User, "name" | "email" | "passwordHash">,
+) {
   if (shouldUsePostgres()) {
     await ensurePostgresSchema();
     const sql = requireSql();
-    const existing = await sql`SELECT id FROM users WHERE lower(email) = lower(${input.email}) LIMIT 1`;
+    const existing =
+      await sql`SELECT id FROM users WHERE lower(email) = lower(${input.email}) LIMIT 1`;
     if (existing.length > 0) throw new Error("Email already registered");
 
     const userCount = await sql`SELECT count(*)::int AS count FROM users`;
-    const role: UserRole = Number(userCount[0]?.count ?? 0) === 0 ? "admin" : "user";
+    const role: UserRole =
+      Number(userCount[0]?.count ?? 0) === 0 ? "admin" : "user";
     const rows = await sql`
       INSERT INTO users (id, full_name, name, email, password_hash, role, status, kyc_status, reporter_verified)
       VALUES (${createId("user")}, ${input.name}, ${input.name}, ${input.email.toLowerCase()}, ${input.passwordHash}, ${role}, 'active', 'not_started', false)
@@ -409,7 +473,11 @@ export async function createUser(input: Pick<User, "name" | "email" | "passwordH
 
   let created: User | null = null;
   await saveLocalDb((db) => {
-    if (db.users.some((user) => user.email.toLowerCase() === input.email.toLowerCase())) {
+    if (
+      db.users.some(
+        (user) => user.email.toLowerCase() === input.email.toLowerCase(),
+      )
+    ) {
       throw new Error("Email already registered");
     }
 
@@ -437,25 +505,47 @@ export async function listUsers() {
   if (shouldUsePostgres()) return listPostgresUsers();
 
   const db = await getDb();
-  return db.users.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+  return db.users.sort(
+    (a, b) => +new Date(b.createdAt) - +new Date(a.createdAt),
+  );
 }
 
 export async function getFirstAdminId() {
   const users = await listUsers();
-  return [...users].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))[0]?.id ?? null;
+  return (
+    [...users].sort(
+      (a, b) => +new Date(a.createdAt) - +new Date(b.createdAt),
+    )[0]?.id ?? null
+  );
 }
 
-async function assertRoleChangeAllowed(actorId: string, targetId: string, role: UserRole) {
-  const [actor, target, firstAdminId] = await Promise.all([getUserById(actorId), getUserById(targetId), getFirstAdminId()]);
-  if (!actor || actor.role !== "admin" || actor.status !== "active") throw new Error("Admin access required");
+async function assertRoleChangeAllowed(
+  actorId: string,
+  targetId: string,
+  role: UserRole,
+) {
+  const [actor, target, firstAdminId] = await Promise.all([
+    getUserById(actorId),
+    getUserById(targetId),
+    getFirstAdminId(),
+  ]);
+  if (!actor || actor.role !== "admin" || actor.status !== "active")
+    throw new Error("Admin access required");
   if (!target) throw new Error("User not found");
   const actorIsFirstAdmin = actor.id === firstAdminId;
   const targetIsFirstAdmin = target.id === firstAdminId;
 
-  if (targetIsFirstAdmin && !actorIsFirstAdmin) throw new Error("The first admin is protected");
-  if (target.role === "admin" && role !== "admin" && !actorIsFirstAdmin) throw new Error("Only the first admin can demote admins");
-  if (role === "reporter" && target.kycStatus !== "approved") throw new Error("Reporter promotion requires approved KYC");
-  if (role === "editor" && !target.reporterVerified && target.role !== "admin") {
+  if (targetIsFirstAdmin && !actorIsFirstAdmin)
+    throw new Error("The first admin is protected");
+  if (target.role === "admin" && role !== "admin" && !actorIsFirstAdmin)
+    throw new Error("Only the first admin can demote admins");
+  if (role === "reporter" && target.kycStatus !== "approved")
+    throw new Error("Reporter promotion requires approved KYC");
+  if (
+    role === "editor" &&
+    !target.reporterVerified &&
+    target.role !== "admin"
+  ) {
     throw new Error("Editor promotion requires verified reporter status");
   }
 
@@ -466,7 +556,11 @@ function reporterVerifiedForRole(target: User, role: UserRole) {
   return target.kycStatus === "approved" && role !== "user";
 }
 
-export async function updateUserRole(actorId: string, userId: string, role: UserRole) {
+export async function updateUserRole(
+  actorId: string,
+  userId: string,
+  role: UserRole,
+) {
   const target = await assertRoleChangeAllowed(actorId, userId, role);
   const reporterVerified = reporterVerifiedForRole(target, role);
 
@@ -497,14 +591,26 @@ export async function updateUserRole(actorId: string, userId: string, role: User
   return updated;
 }
 
-export async function updateUserStatus(actorId: string, userId: string, status: Extract<UserStatus, "active" | "suspended">) {
-  const [actor, target, firstAdminId] = await Promise.all([getUserById(actorId), getUserById(userId), getFirstAdminId()]);
-  if (!actor || actor.role !== "admin" || actor.status !== "active") throw new Error("Admin access required");
+export async function updateUserStatus(
+  actorId: string,
+  userId: string,
+  status: Extract<UserStatus, "active" | "suspended">,
+) {
+  const [actor, target, firstAdminId] = await Promise.all([
+    getUserById(actorId),
+    getUserById(userId),
+    getFirstAdminId(),
+  ]);
+  if (!actor || actor.role !== "admin" || actor.status !== "active")
+    throw new Error("Admin access required");
   if (!target) throw new Error("User not found");
   const actorIsFirstAdmin = actor.id === firstAdminId;
-  if (target.id === firstAdminId && !actorIsFirstAdmin) throw new Error("The first admin is protected");
-  if (target.id === actor.id && status === "suspended") throw new Error("You cannot deactivate your own account");
-  if (target.role === "admin" && !actorIsFirstAdmin && target.id !== actor.id) throw new Error("Only the first admin can deactivate admins");
+  if (target.id === firstAdminId && !actorIsFirstAdmin)
+    throw new Error("The first admin is protected");
+  if (target.id === actor.id && status === "suspended")
+    throw new Error("You cannot deactivate your own account");
+  if (target.role === "admin" && !actorIsFirstAdmin && target.id !== actor.id)
+    throw new Error("Only the first admin can deactivate admins");
 
   if (shouldUsePostgres()) {
     await ensurePostgresSchema();
@@ -530,11 +636,18 @@ export async function updateUserStatus(actorId: string, userId: string, status: 
   return updated;
 }
 
-export async function submitKyc(userId: string, input: Omit<KycSubmission, "id" | "userId" | "status" | "createdAt" | "updatedAt">) {
+export async function submitKyc(
+  userId: string,
+  input: Omit<
+    KycSubmission,
+    "id" | "userId" | "status" | "createdAt" | "updatedAt"
+  >,
+) {
   if (shouldUsePostgres()) {
     await ensurePostgresSchema();
     const sql = requireSql();
-    const userRows = await sql`SELECT id FROM users WHERE id = ${userId} LIMIT 1`;
+    const userRows =
+      await sql`SELECT id FROM users WHERE id = ${userId} LIMIT 1`;
     if (!userRows[0]) throw new Error("User not found");
     await sql`DELETE FROM kyc_submissions WHERE user_id = ${userId} AND status = 'pending'`;
     const rows = await sql`
@@ -560,7 +673,9 @@ export async function submitKyc(userId: string, input: Omit<KycSubmission, "id" 
       createdAt: now,
       updatedAt: now,
     };
-    db.kycSubmissions = db.kycSubmissions.filter((item) => item.userId !== userId || item.status !== "pending");
+    db.kycSubmissions = db.kycSubmissions.filter(
+      (item) => item.userId !== userId || item.status !== "pending",
+    );
     db.kycSubmissions.unshift(submission);
     user.kycStatus = "pending";
     user.updatedAt = now;
@@ -568,7 +683,11 @@ export async function submitKyc(userId: string, input: Omit<KycSubmission, "id" 
   return submission;
 }
 
-export async function reviewKyc(submissionId: string, status: Extract<KycStatus, "approved" | "rejected">, reviewerNote?: string) {
+export async function reviewKyc(
+  submissionId: string,
+  status: Extract<KycStatus, "approved" | "rejected">,
+  reviewerNote?: string,
+) {
   if (shouldUsePostgres()) {
     await ensurePostgresSchema();
     const sql = requireSql();
@@ -593,7 +712,9 @@ export async function reviewKyc(submissionId: string, status: Extract<KycStatus,
 
   let updated: KycSubmission | null = null;
   await saveLocalDb((db) => {
-    const submission = db.kycSubmissions.find((item) => item.id === submissionId);
+    const submission = db.kycSubmissions.find(
+      (item) => item.id === submissionId,
+    );
     if (!submission) throw new Error("KYC not found");
     const user = db.users.find((item) => item.id === submission.userId);
     if (!user) throw new Error("User not found");
@@ -614,19 +735,28 @@ export async function listKycSubmissions() {
   if (shouldUsePostgres()) return listPostgresKyc();
 
   const db = await getDb();
-  return db.kycSubmissions.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+  return db.kycSubmissions.sort(
+    (a, b) => +new Date(b.createdAt) - +new Date(a.createdAt),
+  );
 }
 
 export async function listRoleApplications() {
   if (shouldUsePostgres()) return listPostgresRoleApplications();
 
   const db = await getDb();
-  return db.roleApplications.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+  return db.roleApplications.sort(
+    (a, b) => +new Date(b.createdAt) - +new Date(a.createdAt),
+  );
 }
 
 export async function getMyRoleApplication(userId: string) {
   const applications = await listRoleApplications();
-  return applications.find((application) => application.userId === userId && application.status === "pending") ?? null;
+  return (
+    applications.find(
+      (application) =>
+        application.userId === userId && application.status === "pending",
+    ) ?? null
+  );
 }
 
 export async function submitRoleApplication(userId: string, note: string) {
@@ -635,7 +765,8 @@ export async function submitRoleApplication(userId: string, note: string) {
   if (user.role !== "reporter" || !user.reporterVerified) {
     throw new Error("Only verified reporters can apply to become editors");
   }
-  if (await getMyRoleApplication(userId)) throw new Error("Application already pending");
+  if (await getMyRoleApplication(userId))
+    throw new Error("Application already pending");
 
   if (shouldUsePostgres()) {
     await ensurePostgresSchema();
@@ -672,7 +803,8 @@ export async function reviewRoleApplication(
   reviewerNote?: string,
 ) {
   const actor = await getUserById(actorId);
-  if (!actor || actor.role !== "admin" || actor.status !== "active") throw new Error("Admin access required");
+  if (!actor || actor.role !== "admin" || actor.status !== "active")
+    throw new Error("Admin access required");
 
   if (shouldUsePostgres()) {
     await ensurePostgresSchema();
@@ -685,13 +817,20 @@ export async function reviewRoleApplication(
     `;
     const application = rows[0] ? toRoleApplication(rows[0]) : null;
     if (!application) throw new Error("Application not found");
-    if (status === "approved") await updateUserRole(actorId, application.userId, application.requestedRole);
+    if (status === "approved")
+      await updateUserRole(
+        actorId,
+        application.userId,
+        application.requestedRole,
+      );
     return application;
   }
 
   let updated: RoleApplication | null = null;
   await saveLocalDb((db) => {
-    const application = db.roleApplications.find((item) => item.id === applicationId);
+    const application = db.roleApplications.find(
+      (item) => item.id === applicationId,
+    );
     if (!application) throw new Error("Application not found");
     application.status = status;
     application.reviewerNote = reviewerNote;
@@ -699,7 +838,12 @@ export async function reviewRoleApplication(
     updated = application;
   });
   const reviewedApplication = updated as RoleApplication | null;
-  if (reviewedApplication && status === "approved") await updateUserRole(actorId, reviewedApplication.userId, reviewedApplication.requestedRole);
+  if (reviewedApplication && status === "approved")
+    await updateUserRole(
+      actorId,
+      reviewedApplication.userId,
+      reviewedApplication.requestedRole,
+    );
   return updated;
 }
 
@@ -707,15 +851,25 @@ export async function getReport(idOrSlug: string) {
   if (shouldUsePostgres()) {
     await ensurePostgresSchema();
     const sql = requireSql();
-    const rows = await sql`SELECT * FROM reports WHERE id = ${idOrSlug} OR slug = ${idOrSlug} LIMIT 1`;
+    const rows =
+      await sql`SELECT * FROM reports WHERE id = ${idOrSlug} OR slug = ${idOrSlug} LIMIT 1`;
     return rows[0] ? toReport(rows[0]) : null;
   }
 
   const db = await getDb();
-  return db.reports.find((report) => report.id === idOrSlug || report.slug === idOrSlug) ?? null;
+  return (
+    db.reports.find(
+      (report) => report.id === idOrSlug || report.slug === idOrSlug,
+    ) ?? null
+  );
 }
 
-export async function createReport(input: Omit<Report, "id" | "slug" | "comments" | "reviewTrail" | "createdAt" | "updatedAt">) {
+export async function createReport(
+  input: Omit<
+    Report,
+    "id" | "slug" | "comments" | "reviewTrail" | "createdAt" | "updatedAt"
+  >,
+) {
   const now = new Date().toISOString();
   const report: Report = {
     ...input,
@@ -753,7 +907,10 @@ export async function createReport(input: Omit<Report, "id" | "slug" | "comments
   return report;
 }
 
-export async function addComment(reportId: string, input: Pick<Comment, "name" | "text">) {
+export async function addComment(
+  reportId: string,
+  input: Pick<Comment, "name" | "text">,
+) {
   const comment: Comment = {
     id: createId("c"),
     reportId,
@@ -764,20 +921,21 @@ export async function addComment(reportId: string, input: Pick<Comment, "name" |
   };
 
   if (shouldUsePostgres()) {
-    const report = await getReport(reportId);
-    if (!report) throw new Error("Report not found");
-    const comments = [...report.comments, comment];
     const sql = requireSql();
-    await sql`
+    const rows = await sql`
       UPDATE reports
-      SET comments = ${JSON.stringify(comments)}::jsonb, updated_at = now()
-      WHERE id = ${report.id}
+      SET comments = comments || ${JSON.stringify([comment])}::jsonb, updated_at = now()
+      WHERE id = ${reportId} OR slug = ${reportId}
+      RETURNING id
     `;
+    if (!rows[0]) throw new Error("Report not found");
     return comment;
   }
 
   await saveLocalDb((db) => {
-    const report = db.reports.find((item) => item.id === reportId || item.slug === reportId);
+    const report = db.reports.find(
+      (item) => item.id === reportId || item.slug === reportId,
+    );
     if (!report) throw new Error("Report not found");
     report.comments.push(comment);
     report.updatedAt = new Date().toISOString();
@@ -786,7 +944,11 @@ export async function addComment(reportId: string, input: Pick<Comment, "name" |
   return comment;
 }
 
-export async function reviewReport(reportId: string, decision: ReviewDecision["decision"], reason?: string) {
+export async function reviewReport(
+  reportId: string,
+  decision: ReviewDecision["decision"],
+  reason?: string,
+) {
   const report = await getReport(reportId);
   if (!report) throw new Error("Report not found");
 
@@ -803,13 +965,23 @@ export async function reviewReport(reportId: string, decision: ReviewDecision["d
     ...report.evidence,
     {
       id: createId("e"),
-      label: decision === "approved" ? "Editor approved" : decision === "rejected" ? "Editor rejected" : "More info requested",
+      label:
+        decision === "approved"
+          ? "Editor approved"
+          : decision === "rejected"
+            ? "Editor rejected"
+            : "More info requested",
       type: "editor" as const,
       confidence: decision === "approved" ? 90 : 20,
     },
   ];
   const reviewTrail = [...report.reviewTrail, review];
-  const status = decision === "approved" ? "verified" : decision === "rejected" ? "rejected" : "needs_more_info";
+  const status =
+    decision === "approved"
+      ? "verified"
+      : decision === "rejected"
+        ? "rejected"
+        : "needs_more_info";
 
   if (shouldUsePostgres()) {
     const sql = requireSql();

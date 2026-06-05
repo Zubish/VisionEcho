@@ -1,11 +1,17 @@
 import { cookies } from "next/headers";
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import {
+  createHmac,
+  randomBytes,
+  scryptSync,
+  timingSafeEqual,
+} from "node:crypto";
 import type { PublicUser, User } from "./types";
 import { getUserById } from "./db";
 
 const COOKIE_NAME = "visionecho_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14;
-const sessionSecret = process.env.AUTH_SECRET ?? "visionecho-dev-secret-change-before-production";
+const sessionSecret =
+  process.env.AUTH_SECRET ?? "visionecho-dev-secret-change-before-production";
 
 export function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -18,7 +24,9 @@ export function verifyPassword(password: string, stored: string) {
   if (!salt || !hash) return false;
   const candidate = scryptSync(password, salt, 64);
   const expected = Buffer.from(hash, "hex");
-  return expected.length === candidate.length && timingSafeEqual(expected, candidate);
+  return (
+    expected.length === candidate.length && timingSafeEqual(expected, candidate)
+  );
 }
 
 export function toPublicUser(user: User): PublicUser {
@@ -29,7 +37,9 @@ export function toPublicUser(user: User): PublicUser {
 export async function createSession(userId: string) {
   const expiresAt = Date.now() + SESSION_TTL_MS;
   const payload = `${userId}.${expiresAt}.${randomBytes(8).toString("hex")}`;
-  const signature = createHmac("sha256", sessionSecret).update(payload).digest("hex");
+  const signature = createHmac("sha256", sessionSecret)
+    .update(payload)
+    .digest("hex");
   const token = `${payload}.${signature}`;
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
@@ -55,10 +65,16 @@ export async function getCurrentUser() {
   if (parts.length !== 4) return null;
   const [userId, expiresAt, nonce, signature] = parts;
   const payload = `${userId}.${expiresAt}.${nonce}`;
-  const expected = createHmac("sha256", sessionSecret).update(payload).digest("hex");
+  const expected = createHmac("sha256", sessionSecret)
+    .update(payload)
+    .digest("hex");
   const expectedBuffer = Buffer.from(expected);
   const signatureBuffer = Buffer.from(signature);
-  if (expectedBuffer.length !== signatureBuffer.length || !timingSafeEqual(expectedBuffer, signatureBuffer)) return null;
+  if (
+    expectedBuffer.length !== signatureBuffer.length ||
+    !timingSafeEqual(expectedBuffer, signatureBuffer)
+  )
+    return null;
   if (Number(expiresAt) < Date.now()) return null;
 
   const user = await getUserById(userId);
@@ -67,7 +83,10 @@ export async function getCurrentUser() {
 }
 
 export function canEdit(user: PublicUser | User | null) {
-  return user?.status === "active" && (user.role === "editor" || user.role === "admin");
+  return (
+    user?.status === "active" &&
+    (user.role === "editor" || user.role === "admin")
+  );
 }
 
 export function canAdmin(user: PublicUser | User | null) {

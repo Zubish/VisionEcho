@@ -20,13 +20,20 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
+  if (!user)
+    return NextResponse.json({ error: "Login required" }, { status: 401 });
 
   const { id } = await context.params;
-  const parsed = commentInputSchema.safeParse({ ...(await request.json()), name: user.name });
+  const parsed = commentInputSchema.safeParse({
+    ...(await request.json()),
+    name: user.name,
+  });
 
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid comment", details: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid comment", details: parsed.error.flatten() },
+      { status: 400 },
+    );
   }
 
   try {
